@@ -1,9 +1,20 @@
 <script>
     import Cell from '$lib/Cell.svelte';
 
-    const width = 30;
-    const height = 16;
-    const count = 99;
+    // adv
+    // const width = 30;
+    // const height = 16;
+    // const count = 99;
+
+    // easy
+    const width = 8;
+    const height = 8;
+    const count = 10;
+
+    // medium
+    // const width = 16;
+    // const height = 16;
+    // const count = 40;
 
     const offsets = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
 
@@ -184,7 +195,9 @@
     }
 
     export function mark(x, y) {
-        document.querySelector(`img#c-${x}-${y}`).contextmenu();
+        if (data[y][x].status == 'init') {
+            data[y][x].status = 'mark';
+        }
     }
 
     export function dig(x, y) {
