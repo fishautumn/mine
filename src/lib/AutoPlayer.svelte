@@ -109,6 +109,23 @@
         return set.find(p => p.x == pt.x && p.y == pt.y) != null;
     }
 
+    function set_eq(s1, s2) {
+        return s1.every(a => exists(s2, a));
+    }
+
+    function remove_dup(set) {
+        for (let i = set.length - 2; i > 0; --i) {
+            for (let j = set.length - 1; j > i; --j) {
+                if (set_eq(set[i].cells, set[j].cells)) {
+                    set[i].min = Math.max(set[i].min, set[j].min);
+                    set[i].max = Math.min(set[i].max, set[j].max);
+                    set[j] = set[set.length - 1];
+                    set.length--;
+                }
+            }
+        }
+    }
+
     function careful_solver(v) {
         // mark definite mine, dig definite blanks
 
@@ -127,7 +144,8 @@
                     const r = val - ms;
                     const s = {cells:bs, min: r, max: r};
                     sets.push(s);
-                    bs_map[`${x},${y}`] = s;
+                    const k = `${x},${y}`;
+                    bs_map[`${x},${y}`] = [s];
                 }
             }
         }
@@ -153,62 +171,73 @@
 
         for (let y = 0; y < v.height; ++y) {
             for (let x = 0; x < v.width; ++x) {
-                const cbs = bs_map[`${x},${y}`];
-                if (cbs == null) {
+                const tcbs = bs_map[`${x},${y}`];
+                if (tcbs == null) {
                     continue;
                 }
+                const cbs = tcbs[0];
                 for (const o of adjacent2(v, x, y)) {
-                    const abs = bs_map[`${o.x},${o.y}`];
-                    if (abs == null) {
+                    const tabs = bs_map[`${o.x},${o.y}`];
+                    // todo: check full cells set
+                    if (tabs == null) {
                         continue;
                     }
-                    const c_only = {min:0, cells:[]};
-                    const a_only = {min:0, cells:[]};
-                    const overlap = {min:0, cells:[]};
-                    for (const cc of cbs.cells) {
-                        if (exists(abs.cells, cc)) {
-                            overlap.cells.push(cc);
-                        } else {
-                            c_only.cells.push(cc);
+                    const tabs_len = tabs.length;
+                    for (let i = 0; i < tabs_len; ++i) {
+                        const abs = tabs[i];
+                        const c_only = {min:0, cells:[]};
+                        const a_only = {min:0, cells:[]};
+                        const overlap = {min:0, cells:[]};
+                        for (const cc of cbs.cells) {
+                            if (exists(abs.cells, cc)) {
+                                overlap.cells.push(cc);
+                            } else {
+                                c_only.cells.push(cc);
+                            }
                         }
-                    }
-                    if (overlap.cells.length === 0) {
-                        continue;
-                    }
-                    for (const ac of abs.cells) {
-                        if (!exists(overlap.cells, ac)) {
-                            a_only.cells.push(ac);
+                        if (overlap.cells.length === 0) {
+                            continue;
                         }
+                        for (const ac of abs.cells) {
+                            if (!exists(overlap.cells, ac)) {
+                                a_only.cells.push(ac);
+                            }
+                        }
+                        for (const s of [c_only, a_only, overlap]) {
+                            s.max = s.cells.length;
+                        }
+                        if (a_only.cells.length == 0 && c_only.cells.length == 0) {
+                            continue;
+                        }
+                        // case: if A is super set of B, mines(A-B) = mines(A) - mines(B)
+                        if (a_only.cells.length === 0) {
+                            c_only.min = Math.max(c_only.min, cbs.min - abs.max);
+                            c_only.max = Math.min(c_only.max, cbs.max - abs.min);
+                            sets.push(c_only);
+                        }
+                        if (c_only.cells.length === 0) {
+                            a_only.min = Math.max(a_only.min, abs.min - cbs.max);
+                            a_only.max = Math.min(a_only.max, abs.max - cbs.min);
+                            sets.push(a_only);
+                        }
+                        // case: A, B, I=intersect(A,B):
+                        // max(I) = min(mines(A), mines(B))
+                        overlap.max = Math.min(overlap.max, cbs.max, abs.max);
+                        // min(I) = max(mines(A) - size(A-B), mines(B) - size(B-A))
+                        overlap.min = Math.max(overlap.min, abs.min - a_only.max, cbs.min -  c_only.max);
+                        // min(A-B) = mines(A) - max(I)
+                        c_only.min = Math.max(c_only.min, cbs.min - overlap.max);
+                        a_only.min = Math.max(a_only.min, abs.min - overlap.max);
+                        // max(A-B) = mines(A) - min(I)
+                        c_only.max = Math.min(c_only.max, cbs.max - overlap.min);
+                        a_only.max = Math.min(a_only.max, abs.max - overlap.min);
+                        [overlap, c_only, a_only].filter(s => s.cells.length>0).forEach(s => sets.push(s));
+                        // todo: fix
+                        //[overlap, c_only].filter(s => s.cells.length>0).forEach(s => tcbs.push(s));
+                        //remove_dup(tcbs);
+                        //[overlap, a_only].filter(s => s.cells.length>0).forEach(s => tabs.push(s));
+                        //remove_dup(tabs);
                     }
-                    for (const s of [c_only, a_only, overlap]) {
-                        s.max = s.cells.length;
-                    }
-                    if (a_only.cells.length == 0 && c_only.cells.length == 0) {
-                        continue;
-                    }
-                    // case: if A is super set of B, mines(A-B) = mines(A) - mines(B)
-                    if (a_only.cells.length === 0) {
-                        c_only.min = cbs.min - abs.min;
-                        c_only.max = c_only.min;
-                        sets.push(c_only);
-                    }
-                    if (c_only.cells.length === 0) {
-                        a_only.min = abs.min - cbs.min;
-                        a_only.max = a_only.min;
-                        sets.push(a_only);
-                    }
-                    // case: A, B, I=intersect(A,B):
-                    // max(I) = min(mines(A), mines(B))
-                    overlap.max = Math.min(overlap.max, cbs.max, abs.max);
-                    // min(I) = max(mines(A) - size(A-B), mines(B) - size(B-A))
-                    overlap.min = Math.max(overlap.min, abs.min - a_only.max, cbs.min -  c_only.max);
-                    // min(A-B) = mines(A) - max(I)
-                    c_only.min = Math.max(c_only.min, cbs.min - overlap.max);
-                    a_only.min = Math.max(a_only.min, abs.min - overlap.max);
-                    // max(A-B) = mines(A) - min(I)
-                    c_only.max = Math.min(c_only.max, cbs.max - overlap.min);
-                    a_only.max = Math.min(a_only.max, abs.max - overlap.min);
-                    sets.push(overlap, c_only, a_only);
                 }
             }
         }
@@ -235,7 +264,7 @@
             return [{op:'dig', x: Math.floor(v.width/2), y: Math.floor(v.height/2)}];
         }
 
-        return []; // temp disable guess
+        return [];
 
         // click minimum probability init cell
         let t = null;
