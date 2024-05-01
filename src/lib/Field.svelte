@@ -135,9 +135,8 @@
     }
 </script>
 
-<button on:click={restart}>restart</button><br>
-Remain <span>{remain}</span><br><br>
-
+<p><code>Remain: {remain}</code></p>
+<p><button on:click={restart}>restart</button></p>
 <div>
     {#each data as row}
         <div class="row">
