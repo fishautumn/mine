@@ -5,23 +5,6 @@
     const height = 16;
     const count = 99;
 
-    const cells = [];
-    for (let y = 0; y < height; ++y) {
-        cells[y] = [];
-        for (let x = 0; x < width; ++x) {
-            cells[y][x] = false;
-        }
-    }
-    let mines = 0;
-    while (mines < count) {
-        const x = Math.floor(Math.random() * width);
-        const y = Math.floor(Math.random() * height);
-        if (!cells[y][x]) {
-            cells[y][x] = true;
-            mines++;
-        }
-    }
-
     const offsets = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
 
     function count_mine(x, y) {
@@ -29,7 +12,7 @@
         for (let o of offsets) {
             const ox = x + o[0];
             const oy = y + o[1];
-            if (0 <= ox && ox < width && 0 <= oy && oy < height && cells[oy][ox]) {
+            if (0 <= ox && ox < width && 0 <= oy && oy < height && data[oy][ox].value == -1) {
                 ++c;
             }
         }
@@ -40,12 +23,11 @@
     for (let y = 0; y < height; ++y) {
         data[y] = [];
         for (let x = 0; x < width; ++x) {
-            const value = cells[y][x] ? -1 : count_mine(x, y);
             data[y][x] = {
                 x: x,
                 y: y,
-                value: value,
-                status: 'init'
+                status: 'uninit',
+                value: null
             };
         }
     }
@@ -83,31 +65,62 @@
             const oy = y + o[1];
             if (0 <= ox && ox < width && 0 <= oy && oy < height) {
                 if (data[oy][ox].status == 'init') {
-                    console.log(data[oy][ox]);
                     document.querySelector(`img#c-${ox}-${oy}`).click()
                 }
             }
         }
     }
-</script>
 
-Remain <span>{remain}</span>
+    function restart() {
+        remain = count;
+        for (let y = 0; y < height; ++y) {
+            for (let x = 0; x < width; ++x) {
+                data[y][x].status = 'uninit';
+                data[y][x].value = null;
+                data[y][x].is_init = true;
+            }
+        }
+    }
+
+    function init(e) {
+        const cx = e.detail.x;
+        const cy = e.detail.y;
+
+        if (data[cy][cx].status != 'uninit') {
+            return;
+        }
+
+
+        let mines = 0;
+        while (mines < count) {
+            const x = Math.floor(Math.random() * width);
+            const y = Math.floor(Math.random() * height);
+            if ((x < cx -1 || x > cx + 1) && (y < cy - 1 || y > cy + 1) && data[y][x].value == null) {
+                data[y][x].value = -1;
+                mines++;
+            }
+        }
+
+        for (let y = 0; y < height; ++y) {
+            for (let x = 0; x < width; ++x) {
+                data[y][x].status = 'init';
+                if (data[y][x].value == null) {
+                    data[y][x].value = count_mine(x, y);
+                }
+            }
+        }
+
+        document.querySelector(`img#c-${cx}-${cy}`).click()
+    }
+</script>
+<button on:click={restart}>restart</button><br>
+Remain <span>{remain}</span><br>
 <div>
     {#each data as row}
         <div>
             {#each row as c}
-                <Cell value={c.value} x={c.x} y={c.y} on:flag={flag} bind:this={c.cell} bind:status={c.status} on:unflag={unflag} on:confirm={confirm} />
+                <Cell {...c} bind:status={c.status} on:flag={flag} on:unflag={unflag} on:confirm={confirm} on:init={init} />
             {/each}
         </div>
     {/each}
 </div>
-
-<style>
-table {
-    table-layout: fixed;
-    border: 1px solid black;
-}
-tr {
-    height: 20px;
-}
-</style>
