@@ -26,8 +26,9 @@
             data[y][x] = {
                 x: x,
                 y: y,
-                status: 'uninit',
-                value: null
+                status: 'init',
+                value: null,
+                is_init: false
             };
         }
     }
@@ -55,17 +56,22 @@
     }
 
     function confirm(e) {
-        const x = e.detail.x;
-        const y = e.detail.y;
-        if (adjacent_flags(x, y) != data[y][x].value) {
-            return;
-        }
-        for (let o of offsets) {
-            const ox = x + o[0];
-            const oy = y + o[1];
-            if (0 <= ox && ox < width && 0 <= oy && oy < height) {
-                if (data[oy][ox].status == 'init') {
-                    document.querySelector(`img#c-${ox}-${oy}`).click()
+        const stack = [[e.detail.x, e.detail.y]];
+        while (stack.length > 0) {
+            const pt = stack.pop();
+            const x = pt[0];
+            const y = pt[1];
+            if (adjacent_flags(x, y) != data[y][x].value) {
+                continue;
+            }
+            for (let o of offsets) {
+                const ox = x + o[0];
+                const oy = y + o[1];
+                if (0 <= ox && ox < width && 0 <= oy && oy < height && data[oy][ox].status == 'init') {
+                    data[oy][ox].status = 'clear';
+                    if (data[oy][ox].value == 0) {
+                        stack.push([ox, oy]);
+                    }
                 }
             }
         }
@@ -75,9 +81,10 @@
         remain = count;
         for (let y = 0; y < height; ++y) {
             for (let x = 0; x < width; ++x) {
-                data[y][x].status = 'uninit';
-                data[y][x].value = null;
-                data[y][x].is_init = true;
+                const c = data[y][x];
+                c.status = 'init';
+                c.value = null;
+                c.is_init = false;
             }
         }
     }
@@ -86,16 +93,14 @@
         const cx = e.detail.x;
         const cy = e.detail.y;
 
-        if (data[cy][cx].status != 'uninit') {
-            return;
-        }
-
-
         let mines = 0;
         while (mines < count) {
             const x = Math.floor(Math.random() * width);
             const y = Math.floor(Math.random() * height);
-            if ((x < cx -1 || x > cx + 1) && (y < cy - 1 || y > cy + 1) && data[y][x].value == null) {
+            if (cx - 1 <= x && x <= cx + 1 && cy - 1 <= y && y <= cy + 1) {
+                continue
+            }
+            if (data[y][x].value == null) {
                 data[y][x].value = -1;
                 mines++;
             }
@@ -103,23 +108,30 @@
 
         for (let y = 0; y < height; ++y) {
             for (let x = 0; x < width; ++x) {
-                data[y][x].status = 'init';
+                data[y][x].is_init = true;
                 if (data[y][x].value == null) {
                     data[y][x].value = count_mine(x, y);
                 }
             }
         }
 
-        document.querySelector(`img#c-${cx}-${cy}`).click()
+        data[cy][cx].status = 'clear';
+        confirm({detail:{x:cx, y:cy}});
+    }
+
+    function* range(len) {
+        for (let i = 0; i < len; ++i) {
+            yield i;
+        }
     }
 </script>
 <button on:click={restart}>restart</button><br>
 Remain <span>{remain}</span><br>
 <div>
-    {#each data as row}
+    {#each range(height) as y}
         <div>
-            {#each row as c}
-                <Cell {...c} bind:status={c.status} on:flag={flag} on:unflag={unflag} on:confirm={confirm} on:init={init} />
+            {#each range(width) as x}
+                <Cell {...data[y][x]} bind:status={data[y][x].status} on:flag={flag} on:unflag={unflag} on:confirm={confirm} on:init={init} />
             {/each}
         </div>
     {/each}

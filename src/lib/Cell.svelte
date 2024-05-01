@@ -3,7 +3,8 @@
     export let value;
     export let x;
     export let y;
-    export let status = 'uninit';
+    export let status;
+    export let is_init;
 
     // value: 0~8, -1
     // state: init, clear, mark, fail, wrong
@@ -12,7 +13,6 @@
     const dispatch = createEventDispatcher();
 
     const status_img = {
-        uninit: 'init',
         init: 'init',
         clear: value,
         mark: 'flag',
@@ -22,13 +22,11 @@
 
     $: src = (status_img[status] ?? value ?? 'init') + '.svg';
 
-    export let is_init = true;
-
     function onclick(e) {
-        if (status == 'uninit' && is_init) {
-            is_init = false;
+        if (!is_init) {
+            is_init = true;
             dispatch('init', {x, y});
-        } else if (status == 'uninit' || status == 'init') {
+        } else if (status == 'init') {
             if (e.button == 0) {
                 if (value == -1) {
                     status = 'fail';
@@ -51,9 +49,6 @@
         }
     }
 
-    function contextmenu() {
-        onclick({button:2})
-    }
 </script>
 
 <img {src} on:click={onclick} on:contextmenu|preventDefault={() => onclick({button:2})} id={`c-${x}-${y}`} />
