@@ -1,8 +1,8 @@
 <script>
     import Cell from '$lib/Cell.svelte';
 
-    const width = 16;
-    const height = 30;
+    const width = 30;
+    const height = 16;
     const count = 99;
 
     const cells = [];
@@ -40,25 +40,67 @@
     for (let y = 0; y < height; ++y) {
         data[y] = [];
         for (let x = 0; x < width; ++x) {
+            const value = cells[y][x] ? -1 : count_mine(x, y);
             data[y][x] = {
-                'x': x,
-                'y': y,
-                'value': (cells[y][x] ? -1 : count_mine(x, y)),
-                'status': 'init'
+                x: x,
+                y: y,
+                value: value,
+                status: 'init'
             };
+        }
+    }
+
+    let remain = count;
+
+    function flag(x, y) {
+        --remain;
+    }
+
+    function unflag(x, y) {
+        ++remain;
+    }
+
+    function adjacent_flags(x, y) {
+        let c = 0;
+        for (let o of offsets) {
+            const ox = x + o[0];
+            const oy = y + o[1];
+            if (0 <= ox && ox < width && 0 <= oy && oy < height && data[oy][ox].status == 'mark') {
+                ++c;
+            }
+        }
+        return c;
+    }
+
+    function confirm(e) {
+        const x = e.detail.x;
+        const y = e.detail.y;
+        if (adjacent_flags(x, y) != data[y][x].value) {
+            return;
+        }
+        for (let o of offsets) {
+            const ox = x + o[0];
+            const oy = y + o[1];
+            if (0 <= ox && ox < width && 0 <= oy && oy < height) {
+                if (data[oy][ox].status == 'init') {
+                    console.log(data[oy][ox]);
+                    document.querySelector(`img#c-${ox}-${oy}`).click()
+                }
+            }
         }
     }
 </script>
 
-<table border="1px">
+Remain <span>{remain}</span>
+<div>
     {#each data as row}
-        <tr>
+        <div>
             {#each row as c}
-                <Cell x={c.x} y={c.y} value={c.value} status={c.status} />
+                <Cell value={c.value} x={c.x} y={c.y} on:flag={flag} bind:this={c.cell} bind:status={c.status} on:unflag={unflag} on:confirm={confirm} />
             {/each}
-        </tr>
+        </div>
     {/each}
-</table>
+</div>
 
 <style>
 table {

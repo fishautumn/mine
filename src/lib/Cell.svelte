@@ -11,30 +11,36 @@
     import { createEventDispatcher } from 'svelte';
     const dispatch = createEventDispatcher();
 
-    const status_text = {
-        init: ' ',
-        clear: value == 0 ? ' ' : value,
-        mark: 'F',
-        fail: 'X',
-        wrong: 'X',
-    }
+    const status_img = {
+        init: 'init',
+        clear: value,
+        mark: 'flag',
+        fail: 'mine-red',
+        wrong: 'flag-red',
+    };
+
+    $: src = (status_img[status] ?? value) + '.svg';
 
     function onclick(e) {
         if (status == 'init') {
             if (e.button == 0) {
-                if (value == 0) {
-                    dispatch('clear', { x, y });
-                } else if (value == -1) {
+                if (value == -1) {
                     status = 'fail';
+                    dispatch('fail', { x, y });
                 } else {
                     status = 'clear';
+                    if (value == 0) {
+                        dispatch('confirm', { x, y });
+                    }
                 }
             } else if (e.button == 2) {
+                dispatch('flag', { x, y });
                 status = 'mark';
             }
         } else if (status == 'clear' && value > 0) {
             dispatch('confirm', { x, y });
         } else if (status == 'mark' && e.button == 2) {
+            dispatch('unflag', { x, y });
             status = 'init';
         }
     }
@@ -44,12 +50,10 @@
     }
 </script>
 
-<td on:click={onclick} on:contextmenu|preventDefault={contextmenu}><code>{status_text[status]}</code></td>
+<img {src} on:click={onclick} on:contextmenu|preventDefault={() => onclick({button:2})} id={`c-${x}-${y}`} />
 
 <style>
-td {
-    text-align: center;
-    border-collapse: collapse;
-    width: 20px;
+img {
+    width: 25px;
 }
 </style>
