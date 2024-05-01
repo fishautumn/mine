@@ -15,6 +15,30 @@
         }
     }
 
+    function* adjacent2(v, x, y) {
+        for (const dy of [-2, -1]) {
+            const oy = y + dy;
+            if (oy < 0) {
+                continue;
+            }
+            for (const dx of [-2, -1, 0, 1, 2]) {
+                const ox = x + dx;
+                if (0 <= ox && ox < v.width) {
+                    yield ({x:ox, y:oy});
+                }
+            }
+        }
+        for (const dy of [0]) {
+            const oy = y + dy;
+            for (const dx of [-2, -1]) {
+                const ox = x + dx;
+                if (ox >= 0) {
+                    yield ({x:ox, y:oy});
+                }
+            }
+        }
+    }
+
     function adjacent_count(v, x, y, func) {
         let c = 0;
         for (const o of adjacent(v, x, y)) {
@@ -42,7 +66,7 @@
         }
 
         const r = solve(v);
-        if (!r) {
+        if (!r || r.length == 0) {
             return false;
         }
         for (const a of r) {
@@ -81,18 +105,16 @@
         return ({cells: cells, min: p, max: p});
     }
 
+    function exists(set, pt) {
+        return set.find(p => p.x == pt.x && p.y == pt.y) != null;
+    }
+
     function careful_solver(v) {
         // mark definite mine, dig definite blanks
 
         const sets = [init_set(v)];
-        if (sets[0].min == sets[0].cells.length) {
-            return sets.map(c => ({op:'mark', x:c.x, y:c.y}));
-        }
-        if (sets[0].max == 0) {
-            return sets.map(c => ({op:'dig', x:c.x, y:c.y}));
-        }
 
-
+        const bs_map = {};
         for (let y = 0; y < v.height; ++y) {
             for (let x = 0; x < v.width; ++x) {
                 if (typeof(v.data[y][x]) == 'number') {
@@ -103,7 +125,9 @@
                     }
                     const ms = adjacent_count(v, x, y, c => c === 'F');
                     const r = val - ms;
-                    sets.push({cells:bs, min: r, max: r});
+                    const s = {cells:bs, min: r, max: r};
+                    sets.push(s);
+                    bs_map[`${x},${y}`] = s;
                 }
             }
         }
@@ -125,6 +149,78 @@
 
         if (ret.length > 0) {
             return ret;
+        }
+
+        for (let y = 0; y < v.height; ++y) {
+            for (let x = 0; x < v.width; ++x) {
+                const cbs = bs_map[`${x},${y}`];
+                if (cbs == null) {
+                    continue;
+                }
+                for (const o of adjacent2(v, x, y)) {
+                    const abs = bs_map[`${o.x},${o.y}`];
+                    if (abs == null) {
+                        continue;
+                    }
+                    const c_only = {min:0, cells:[]};
+                    const a_only = {min:0, cells:[]};
+                    const overlap = {min:0, cells:[]};
+                    for (const cc of cbs.cells) {
+                        if (exists(abs.cells, cc)) {
+                            overlap.cells.push(cc);
+                        } else {
+                            c_only.cells.push(cc);
+                        }
+                    }
+                    if (overlap.cells.length === 0) {
+                        continue;
+                    }
+                    for (const ac of abs.cells) {
+                        if (!exists(overlap.cells, ac)) {
+                            a_only.cells.push(ac);
+                        }
+                    }
+                    for (const s of [c_only, a_only, overlap]) {
+                        s.max = s.cells.length;
+                    }
+                    if (a_only.cells.length == 0 && c_only.cells.length == 0) {
+                        continue;
+                    }
+                    // case: if A is super set of B, mines(A-B) = mines(A) - mines(B)
+                    if (a_only.cells.length === 0) {
+                        c_only.min = cbs.min - abs.min;
+                        c_only.max = c_only.min;
+                        sets.push(c_only);
+                    }
+                    if (c_only.cells.length === 0) {
+                        a_only.min = abs.min - cbs.min;
+                        a_only.max = a_only.min;
+                        sets.push(a_only);
+                    }
+                }
+            }
+        }
+
+        def = sets.filter(s => s.cells.length == s.min);
+        for (const s of def) {
+            for (const c of s.cells) {
+                ret.push({op:'mark', x:c.x, y:c.y});
+            }
+        }
+
+        def = sets.filter(s => s.max == 0);
+        for (const s of def) {
+            for (const c of s.cells) {
+                ret.push({op:'dig', x:c.x, y:c.y});
+            }
+        }
+
+        if (ret.length > 0) {
+            return ret;
+        }
+
+        if (sets[0].cells.length < v.height * v.width) {
+            return [];
         }
 
         // click minimum probability init cell

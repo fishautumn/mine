@@ -7,14 +7,14 @@
     // const count = 99;
 
     // easy
-    const width = 8;
-    const height = 8;
-    const count = 10;
+    // const width = 8;
+    // const height = 8;
+    // const count = 10;
 
     // medium
-    // const width = 16;
-    // const height = 16;
-    // const count = 40;
+    const width = 16;
+    const height = 16;
+    const count = 40;
 
     const offsets = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
 
