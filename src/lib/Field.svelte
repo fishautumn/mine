@@ -19,7 +19,7 @@
         return c;
     }
 
-    const data = [];
+    let data = [];
     for (let y = 0; y < height; ++y) {
         data[y] = [];
         for (let x = 0; x < width; ++x) {
@@ -79,14 +79,14 @@
 
     function restart() {
         remain = count;
-        for (let y = 0; y < height; ++y) {
-            for (let x = 0; x < width; ++x) {
-                const c = data[y][x];
+        for (const row of data) {
+            for (const c of row) {
                 c.status = 'init';
                 c.value = null;
                 c.is_init = false;
             }
         }
+        data = data
     }
 
     function init(e) {
@@ -118,21 +118,23 @@
         data[cy][cx].status = 'clear';
         confirm({detail:{x:cx, y:cy}});
     }
-
-    function* range(len) {
-        for (let i = 0; i < len; ++i) {
-            yield i;
-        }
-    }
 </script>
+
 <button on:click={restart}>restart</button><br>
-Remain <span>{remain}</span><br>
+Remain <span>{remain}</span><br><br>
+
 <div>
-    {#each range(height) as y}
-        <div>
-            {#each range(width) as x}
-                <Cell {...data[y][x]} bind:status={data[y][x].status} on:flag={flag} on:unflag={unflag} on:confirm={confirm} on:init={init} />
+    {#each data as row}
+        <div class="row">
+            {#each row as c}
+                <Cell {...c} bind:status={c.status} on:flag={flag} on:unflag={unflag} on:confirm={confirm} on:init={init} />
             {/each}
         </div>
     {/each}
 </div>
+
+<style>
+div.row {
+    height: 24px;
+}
+</style>
