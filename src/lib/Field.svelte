@@ -83,8 +83,9 @@
         }
     }
 
-    function restart() {
+    export function restart() {
         remain = count;
+        status = 'working';
         for (const row of data) {
             for (const c of row) {
                 c.status = 'init';
@@ -127,11 +128,67 @@
     }
 
     function fail() {
+        status = 'failure';
         for (let y = 0; y < height; ++y) {
             for (let x = 0; x < width; ++x) {
                 data[y][x].freeze = true;
             }
         }
+    }
+
+    function cell_view(c) {
+        switch(c.status) {
+            case 'init':
+                return ' ';
+            case 'mark':
+                return 'F';
+            case 'clear':
+                return c.value;
+            default:
+                return 'X';
+        }
+    }
+
+    let status = 'working';
+
+    function get_status() {
+        if (status != 'working') {
+            return status;
+        }
+        if (remain > 0 || has_init()) {
+            return status;
+        }
+        status = 'success';
+        return status;
+    }
+
+    function has_init() {
+        for (const row of data) {
+            for (const c of row) {
+                if (c.status == 'init') {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    export function view() {
+        return {
+            status: get_status(), // working, success, failure
+            remain: remain,
+            width: width,
+            height: height,
+            data: data.map(row => row.map(cell_view))
+        }
+    }
+
+    export function mark(x, y) {
+        document.querySelector(`img#c-${x}-${y}`).contextmenu();
+    }
+
+    export function dig(x, y) {
+        document.querySelector(`img#c-${x}-${y}`).click();
     }
 </script>
 
