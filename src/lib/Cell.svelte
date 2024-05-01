@@ -5,6 +5,7 @@
     export let y;
     export let status;
     export let is_init;
+    export let freeze;
 
     // value: 0~8, -1
     // state: init, clear, mark, fail, wrong
@@ -23,6 +24,9 @@
     $: src = (status_img[status] ?? value ?? 'init') + '.svg';
 
     function onclick(e) {
+        if (freeze) {
+            return;
+        }
         if (!is_init) {
             is_init = true;
             dispatch('init', {x, y});

@@ -28,7 +28,8 @@
                 y: y,
                 status: 'init',
                 value: null,
-                is_init: false
+                is_init: false,
+                freeze: false
             };
         }
     }
@@ -68,7 +69,12 @@
                 const ox = x + o[0];
                 const oy = y + o[1];
                 if (0 <= ox && ox < width && 0 <= oy && oy < height && data[oy][ox].status == 'init') {
-                    data[oy][ox].status = 'clear';
+                    if (data[oy][ox].value >= 0) {
+                        data[oy][ox].status = 'clear';
+                    } else {
+                        data[oy][ox].status = 'fail';
+                        fail();
+                    }
                     if (data[oy][ox].value == 0) {
                         stack.push([ox, oy]);
                     }
@@ -84,6 +90,7 @@
                 c.status = 'init';
                 c.value = null;
                 c.is_init = false;
+                c.freeze = false;
             }
         }
         data = data
@@ -118,6 +125,14 @@
         data[cy][cx].status = 'clear';
         confirm({detail:{x:cx, y:cy}});
     }
+
+    function fail() {
+        for (let y = 0; y < height; ++y) {
+            for (let x = 0; x < width; ++x) {
+                data[y][x].freeze = true;
+            }
+        }
+    }
 </script>
 
 <button on:click={restart}>restart</button><br>
@@ -127,7 +142,7 @@ Remain <span>{remain}</span><br><br>
     {#each data as row}
         <div class="row">
             {#each row as c}
-                <Cell {...c} bind:status={c.status} on:flag={flag} on:unflag={unflag} on:confirm={confirm} on:init={init} />
+                <Cell {...c} bind:status={c.status} on:flag={flag} on:unflag={unflag} on:confirm={confirm} on:init={init} on:fail={fail} />
             {/each}
         </div>
     {/each}
