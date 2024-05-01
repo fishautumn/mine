@@ -201,6 +201,14 @@
     }
 
     export function dig(x, y) {
+        if (data[y][x].status == 'init') {
+            if (data[y][x].value >= 0) {
+                data[y][x].status = 'clear';
+            } else {
+                data[y][x].status = 'fail';
+                fail();
+            }
+        }
         document.querySelector(`img#c-${x}-${y}`).click();
     }
 </script>

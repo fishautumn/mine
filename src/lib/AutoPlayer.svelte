@@ -128,7 +128,15 @@
         }
 
         // click minimum probability init cell
-
+        let t = null;
+        let mp = 4;
+        for (let s of sets) {
+            if (s.min + s.max < mp) {
+                mp = s.min + s.max;
+                t = s;
+            }
+        }
+        return [{op:'dig', x:t.cells[0].x, y:t.cells[0].y}];
     }
 
     async function go() {
