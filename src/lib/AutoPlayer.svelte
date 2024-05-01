@@ -197,6 +197,18 @@
                         a_only.max = a_only.min;
                         sets.push(a_only);
                     }
+                    // case: A, B, I=intersect(A,B):
+                    // max(I) = min(mines(A), mines(B))
+                    overlap.max = Math.min(overlap.max, cbs.max, abs.max);
+                    // min(I) = max(mines(A) - size(A-B), mines(B) - size(B-A))
+                    overlap.min = Math.max(overlap.min, abs.min - a_only.max, cbs.min -  c_only.max);
+                    // min(A-B) = mines(A) - max(I)
+                    c_only.min = Math.max(c_only.min, cbs.min - overlap.max);
+                    a_only.min = Math.max(a_only.min, abs.min - overlap.max);
+                    // max(A-B) = mines(A) - min(I)
+                    c_only.max = Math.min(c_only.max, cbs.max - overlap.min);
+                    a_only.max = Math.min(a_only.max, abs.max - overlap.min);
+                    sets.push(overlap, c_only, a_only);
                 }
             }
         }
@@ -219,9 +231,11 @@
             return ret;
         }
 
-        if (sets[0].cells.length < v.height * v.width) {
-            return [];
+        if (sets[0].cells.length == v.height * v.width) {
+            return [{op:'dig', x: Math.floor(v.width/2), y: Math.floor(v.height/2)}];
         }
+
+        return []; // temp disable guess
 
         // click minimum probability init cell
         let t = null;
