@@ -59,13 +59,14 @@
         return r;
     }
 
-    function step() {
+    function step(guess) {
         const v = field.view();
         if (v.status != 'working') {
             return false;
         }
 
-        const r = solve(v);
+        // debug field.do_copy();
+        const r = solve(v, guess);
         if (!r || r.length == 0) {
             return false;
         }
@@ -81,9 +82,9 @@
         return true;
     }
 
-    function solve(v) {
+    function solve(v, guess) {
         // return random_monkey(v);
-        return careful_solver(v);
+        return careful_solver(v, guess);
     }
 
     function random_monkey(v) {
@@ -101,20 +102,19 @@
                 }
             }
         }
-        const p = v.remain / cells.length;
-        return ({cells: cells, min: p, max: p});
+        return ({cells: cells, min: v.remain, max: v.remain});
     }
 
     function exists(set, pt) {
-        return set.find(p => p.x == pt.x && p.y == pt.y) != null;
+        return set.find(p => p.x === pt.x && p.y === pt.y) != null;
     }
 
     function set_eq(s1, s2) {
-        return s1.every(a => exists(s2, a));
+        return s1.length == s2.length && s1.every(a => exists(s2, a)) && s2.every(a => exists(s1, a));
     }
 
     function remove_dup(set) {
-        for (let i = set.length - 2; i > 0; --i) {
+        for (let i = set.length - 2; i >= 0; --i) {
             for (let j = set.length - 1; j > i; --j) {
                 if (set_eq(set[i].cells, set[j].cells)) {
                     set[i].min = Math.max(set[i].min, set[j].min);
@@ -126,7 +126,7 @@
         }
     }
 
-    function careful_solver(v) {
+    function careful_solver(v, guess) {
         // mark definite mine, dig definite blanks
 
         const sets = [init_set(v)];
@@ -178,16 +178,13 @@
                 const cbs = tcbs[0];
                 for (const o of adjacent2(v, x, y)) {
                     const tabs = bs_map[`${o.x},${o.y}`];
-                    // todo: check full cells set
                     if (tabs == null) {
                         continue;
                     }
-                    const tabs_len = tabs.length;
-                    for (let i = 0; i < tabs_len; ++i) {
-                        const abs = tabs[i];
-                        const c_only = {min:0, cells:[]};
-                        const a_only = {min:0, cells:[]};
-                        const overlap = {min:0, cells:[]};
+                    for (const abs of [...tabs, sets[0]]) {
+                        const c_only = {cells:[]};
+                        const a_only = {cells:[]};
+                        const overlap = {cells:[]};
                         for (const cc of cbs.cells) {
                             if (exists(abs.cells, cc)) {
                                 overlap.cells.push(cc);
@@ -203,40 +200,56 @@
                                 a_only.cells.push(ac);
                             }
                         }
-                        for (const s of [c_only, a_only, overlap]) {
-                            s.max = s.cells.length;
-                        }
                         if (a_only.cells.length == 0 && c_only.cells.length == 0) {
                             continue;
                         }
-                        // case: if A is super set of B, mines(A-B) = mines(A) - mines(B)
-                        if (a_only.cells.length === 0) {
-                            c_only.min = Math.max(c_only.min, cbs.min - abs.max);
-                            c_only.max = Math.min(c_only.max, cbs.max - abs.min);
-                            sets.push(c_only);
+                        for (const s of [c_only, a_only, overlap]) {
+                            s.min = 0;
+                            s.max = s.cells.length;
                         }
-                        if (c_only.cells.length === 0) {
-                            a_only.min = Math.max(a_only.min, abs.min - cbs.max);
-                            a_only.max = Math.min(a_only.max, abs.max - cbs.min);
-                            sets.push(a_only);
+
+                        let done = false;
+                        while (!done) {
+                            let changed = false;
+
+                            for (const m of [cbs.max - c_only.min, abs.max - a_only.min]) {
+                                if (m < overlap.max) {
+                                    overlap.max = m;
+                                    changed = true;
+                                }
+                            }
+                            for (const m of [cbs.min - c_only.max, abs.min - a_only.max]) {
+                                if (m > overlap.min) {
+                                    overlap.min = m;
+                                    changed = true;
+                                }
+                            }
+                            if (cbs.max - overlap.min < c_only.max) {
+                                c_only.max = cbs.max - overlap.min;
+                                changed = true;
+                            }
+                            if (cbs.min - overlap.max > c_only.min) {
+                                c_only.min = cbs.min - overlap.max;
+                                changed = true;
+                            }
+                            if (abs.max - overlap.min < a_only.max) {
+                                a_only.max = abs.max - overlap.min;
+                                changed = true;
+                            }
+                            if (abs.min - overlap.max > a_only.min) {
+                                a_only.min = abs.min - overlap.max;
+                                changed = true;
+                            }
+
+                            done = !changed;
                         }
-                        // case: A, B, I=intersect(A,B):
-                        // max(I) = min(mines(A), mines(B))
-                        overlap.max = Math.min(overlap.max, cbs.max, abs.max);
-                        // min(I) = max(mines(A) - size(A-B), mines(B) - size(B-A))
-                        overlap.min = Math.max(overlap.min, abs.min - a_only.max, cbs.min -  c_only.max);
-                        // min(A-B) = mines(A) - max(I)
-                        c_only.min = Math.max(c_only.min, cbs.min - overlap.max);
-                        a_only.min = Math.max(a_only.min, abs.min - overlap.max);
-                        // max(A-B) = mines(A) - min(I)
-                        c_only.max = Math.min(c_only.max, cbs.max - overlap.min);
-                        a_only.max = Math.min(a_only.max, abs.max - overlap.min);
-                        [overlap, c_only, a_only].filter(s => s.cells.length>0).forEach(s => sets.push(s));
-                        // todo: fix
-                        //[overlap, c_only].filter(s => s.cells.length>0).forEach(s => tcbs.push(s));
-                        //remove_dup(tcbs);
-                        //[overlap, a_only].filter(s => s.cells.length>0).forEach(s => tabs.push(s));
-                        //remove_dup(tabs);
+                        [overlap, c_only, a_only].filter(s => s.cells.length > 0).forEach(s => sets.push(s));
+                        [overlap, c_only].filter(s => s.cells.length > 0).forEach(s => tcbs.push(s));
+                        remove_dup(tcbs);
+                        if (abs !== sets[0]) {
+                            [overlap, a_only].filter(s => s.cells.length > 0).forEach(s => tabs.push(s));
+                            remove_dup(tabs);
+                        }
                     }
                 }
             }
@@ -264,7 +277,9 @@
             return [{op:'dig', x: Math.floor(v.width/2), y: Math.floor(v.height/2)}];
         }
 
-        return [];
+        if (!guess) {
+            return [];
+        }
 
         // click minimum probability init cell
         let t = null;
@@ -279,12 +294,16 @@
     }
 
     async function go() {
-        setTimeout(() => { if (step()) { go() } }, 100);
+        setTimeout(() => { if (step()) { go() } }, 20);
     }
 
 </script>
 
-<button on:click={step}>One Step</button>
+<div>
+    <p/>
+    <button on:click={go}>Go</button>
 
-<button on:click={go}>Go</button>
+    <button on:click={step}>One Step</button>
 
+    <button on:click={() => step(true)}>Guess</button>
+</div>

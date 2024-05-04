@@ -1,20 +1,23 @@
 <script>
     import Cell from '$lib/Cell.svelte';
 
-    // adv
-    const width = 30;
-    const height = 16;
-    const count = 99;
+    const level = "adv"
 
-    // easy
-    // const width = 8;
-    // const height = 8;
-    // const count = 10;
+    let width = 30;
+    let height = 16;
+    let count = 99;
 
-    // medium
-    //const width = 16;
-    //const height = 16;
-    //const count = 40;
+    if (level == "easy") {
+        width = 8;
+        height = 8;
+        count = 10;
+    }
+
+    if (level == "medium") {
+        width = 16;
+        height = 16;
+        count = 40;
+    }
 
     const offsets = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
 
@@ -136,7 +139,10 @@
 
         data[cy][cx].status = 'clear';
         confirm({detail:{x:cx, y:cy}});
+        init_snapshot = data;
     }
+
+    let init_snapshot;
 
     function fail() {
         status = 'failure';
@@ -187,6 +193,7 @@
     export function view() {
         return {
             status: get_status(), // working, success, failure
+            count: count,
             remain: remain,
             width: width,
             height: height,
@@ -212,10 +219,25 @@
         }
         document.querySelector(`img#c-${x}-${y}`).click();
     }
-</script>
 
+    export function do_copy() {
+        navigator.clipboard.writeText(JSON.stringify(data));
+    }
+
+    async function do_load() {
+        const t = await navigator.clipboard.readText();
+        data = JSON.parse(t);
+        count = data.reduce((acc, cur) => acc + cur.filter(x => x.value == -1).length, 0);
+        remain = count - data.reduce((acc, cur) => acc + cur.filter(x => x.status == 'mark').length, 0);
+        width = data[0].length;
+        height = data.length;
+    }
+
+    let opts;
+</script>
 <p><code>Remain: {remain}</code></p>
 <p><button on:click={restart}>restart</button></p>
+<!--debug<p><button on:click={do_load}>load</button></p>-->
 <div>
     {#each data as row}
         <div class="row">
