@@ -8,3 +8,6 @@
 
 <Field bind:this={field} />
 <AutoPlayer {field} />
+
+<br>
+<a href="https://github.com/fishautumn/mine">github source code</a>
