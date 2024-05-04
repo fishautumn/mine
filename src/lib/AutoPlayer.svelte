@@ -131,6 +131,10 @@
 
         const sets = [init_set(v)];
 
+        if (sets[0].cells.length == v.height * v.width) {
+            return [{op:'dig', x: Math.floor(v.width/2), y: Math.floor(v.height/2)}];
+        }
+
         const bs_map = {};
         for (let y = 0; y < v.height; ++y) {
             for (let x = 0; x < v.width; ++x) {
@@ -271,10 +275,6 @@
 
         if (ret.length > 0) {
             return ret;
-        }
-
-        if (sets[0].cells.length == v.height * v.width) {
-            return [{op:'dig', x: Math.floor(v.width/2), y: Math.floor(v.height/2)}];
         }
 
         if (!guess) {
