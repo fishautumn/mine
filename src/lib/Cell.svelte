@@ -55,11 +55,17 @@
 
 </script>
 
-<img {src} on:click={onclick} on:contextmenu|preventDefault={() => onclick({button:2})} id={`c-${x}-${y}`} />
+<button on:click={onclick} on:contextmenu|preventDefault={() => onclick({button:2})} id={`c-${x}-${y}`}>
+    <img {src}  alt="" />
+</button>
 
 <style>
 img {
     width: 24px;
     height: 24px;
+}
+button {
+    padding: 0px;
+    border: 0px;
 }
 </style>

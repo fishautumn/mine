@@ -217,7 +217,7 @@
                 fail();
             }
         }
-        document.querySelector(`img#c-${x}-${y}`).click();
+        document.querySelector(`button#c-${x}-${y}`).click();
     }
 
     export function do_copy() {

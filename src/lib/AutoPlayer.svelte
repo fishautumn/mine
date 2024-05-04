@@ -154,25 +154,6 @@
             }
         }
 
-        let def = sets.filter(s => s.cells.length == s.min);
-        const ret = [];
-        for (const s of def) {
-            for (const c of s.cells) {
-                ret.push({op:'mark', x:c.x, y:c.y});
-            }
-        }
-
-        def = sets.filter(s => s.max == 0);
-        for (const s of def) {
-            for (const c of s.cells) {
-                ret.push({op:'dig', x:c.x, y:c.y});
-            }
-        }
-
-        if (ret.length > 0) {
-            return ret;
-        }
-
         for (let y = 0; y < v.height; ++y) {
             for (let x = 0; x < v.width; ++x) {
                 const tcbs = bs_map[`${x},${y}`];
@@ -259,7 +240,8 @@
             }
         }
 
-        def = sets.filter(s => s.cells.length == s.min);
+        let def = sets.filter(s => s.cells.length == s.min);
+        let ret = [];
         for (const s of def) {
             for (const c of s.cells) {
                 ret.push({op:'mark', x:c.x, y:c.y});
@@ -282,15 +264,46 @@
         }
 
         // click minimum probability init cell
-        let t = null;
-        let mp = 4;
-        for (let s of sets) {
-            if (s.min + s.max < mp) {
-                mp = s.min + s.max;
-                t = s;
+        const pt = find_min_probability(sets);
+        pt['op'] = 'dig';
+        return [pt];
+    }
+
+    function find_min_probability(sets) {
+        const m = [];
+        for (const s of sets) {
+            const tp = (s.min + s.max) / s.cells.length;
+            for (const c of s.cells) {
+                let row;
+                if (c.y in m) {
+                    row = m[c.y];
+                } else {
+                    row = [];
+                    m[c.y] = row;
+                }
+                if (c.x in row) {
+                    if (tp > row[c.x]) {
+                        row[c.x] = tp;
+                    }
+                } else {
+                    row[c.x] = tp;
+                }
             }
         }
-        return [{op:'dig', x:t.cells[0].x, y:t.cells[0].y}];
+        let min_p = 4;
+        let pt;
+        for (const [y, row] of m.entries()) {
+            if (row == null) {
+                continue;
+            }
+            for (const [x, p] of row.entries()) {
+                if (p != null && p < min_p) {
+                    min_p = p;
+                    pt = {x:x, y:y};
+                }
+            }
+        }
+        return pt;
     }
 
     async function go() {
@@ -303,7 +316,7 @@
     <p/>
     <button on:click={go}>Go</button>
 
-    <button on:click={step}>One Step</button>
+    <button on:click={step}>Step</button>
 
     <button on:click={() => step(true)}>Guess</button>
 </div>
