@@ -1,5 +1,5 @@
 A js implemented minesweeper with an auto playing bot.
 
-[https://fishautumn.github.io/mine/index.html](Play online!)
+[Play online!](https://fishautumn.github.io/mine/index.html)
 
 Toy for svelte framework.
