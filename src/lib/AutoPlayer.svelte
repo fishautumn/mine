@@ -111,10 +111,10 @@
     }
 
     function careful_solver(v, guess) {
-        // mark definite mine, dig definite blanks
 
         const sets = [init_set(v)];
 
+        // at the beginning: click at the field center.
         if (sets[0].cells.length == v.height * v.width) {
             return [{op:'dig', x: Math.floor(v.width/2), y: Math.floor(v.height/2)}];
         }
@@ -223,25 +223,20 @@
             }
         }
 
-        let def = sets.filter(s => s.cells.length == s.min);
         let ret = [];
-        for (const s of def) {
+        for (const s of sets.filter(s => s.cells.length == s.min)) {
             for (const c of s.cells) {
                 ret.push({op:'mark', x:c.x, y:c.y});
             }
         }
-
-        def = sets.filter(s => s.max == 0);
-        for (const s of def) {
+        for (const s of sets.filter(s => s.max == 0)) {
             for (const c of s.cells) {
                 ret.push({op:'dig', x:c.x, y:c.y});
             }
         }
-
         if (ret.length > 0) {
             return ret;
         }
-
         if (!guess) {
             return [];
         }
