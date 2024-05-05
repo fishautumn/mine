@@ -134,6 +134,9 @@
         for (let y = 0; y < opt.height; ++y) {
             for (let x = 0; x < opt.width; ++x) {
                 data[y][x].freeze = true;
+                if (data[y][x].value != -1 && data[y][x].status == 'mark') {
+                    data[y][x].status = 'wrong';
+                }
             }
         }
     }
