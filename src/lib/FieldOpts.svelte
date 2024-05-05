@@ -1,3 +1,5 @@
+<svelte:options accessors />
+
 <script>
     const levels = {
         easy: {
@@ -30,24 +32,57 @@
             count = opt.count;
         }
     }
+
+    import { createEventDispatcher } from 'svelte';
+    const dispatch = createEventDispatcher();
+
+    function choose_level() {
+        document.querySelector('dialog#opt_dlg').showModal();
+    }
+
+    function close_dlg() {
+        document.querySelector('dialog#opt_dlg').close();
+        dispatch("change");
+    }
+
 </script>
 
 <div>
-    <div>
-        {#each Object.keys(levels) as opt}
-            <label><input type="radio" name="level" value={opt} bind:group={level} on:change={on_level_changed} />{opt}</label><br/>
-        {/each}
-        <label><input type="radio" name="level" value="customize" bind:group={level} on:change={on_level_changed}/>customize</label>
-    </div>
-    <div>
-        {#if level in levels}
-            <label>width: <input type="number" name="width" bind:value={width} readonly/></label><br/>
-            <label>height: <input type="number" name="height" bind:value={height} readonly/></label><br/>
-            <label>count: <input type="number" name="count" bind:value={count} readonly/></label>
-        {:else}
-            <label>width: <input type="number" name="width" bind:value={width}/></label><br/>
-            <label>height: <input type="number" name="height" bind:value={height}/></label><br/>
-            <label>count: <input type="number" name="count" bind:value={count}/></label>
-        {/if}
-    </div>
+    <label><code>Level <button on:click={choose_level}><code>{level}</code></button>: {width}x{height},{count}</code></label>
+    <dialog id="opt_dlg">
+        <div>
+            {#each Object.keys(levels) as opt}
+                <label><input type="radio" name="level" value={opt} bind:group={level} on:change={on_level_changed} />{opt}</label><br/>
+            {/each}
+            <label><input type="radio" name="level" value="customize" bind:group={level} on:change={on_level_changed}/>customize</label><br>&nbsp;
+        </div>
+        <div>
+            {#if level in levels}
+                <label for="width">width: </label><input type="number" name="width" bind:value={width} disabled/><br/>
+                <label for="height">height: </label><input type="number" name="height" bind:value={height} disabled/><br/>
+                <label for="count">count: </label><input type="number" name="count" bind:value={count} disabled/>
+            {:else}
+                <label for="width">width: </label><input type="number" name="width" bind:value={width}/><br/>
+                <label for="height">height: </label><input type="number" name="height" bind:value={height}/><br/>
+                <label for="count">count: </label><input type="number" name="count" bind:value={count}/>
+            {/if}
+            <br/>&nbsp;
+        </div>
+        <button on:click={close_dlg}><code>OK</code></button>
+    </dialog>
 </div>
+
+<style>
+div#left {
+    float: left;
+    width: 120px;
+}
+input[type='number'] {
+    width: 40px;
+}
+label[for] {
+    display: inline-block;
+    width: 50px;
+    text-align: right;
+}
+</style>

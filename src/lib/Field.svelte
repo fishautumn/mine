@@ -1,23 +1,8 @@
 <script>
     import Cell from '$lib/Cell.svelte';
+    import FieldOpts from '$lib/FieldOpts.svelte';
 
-    const level = "adv"
-
-    let width = 30;
-    let height = 16;
-    let count = 99;
-
-    if (level == "easy") {
-        width = 8;
-        height = 8;
-        count = 10;
-    }
-
-    if (level == "medium") {
-        width = 16;
-        height = 16;
-        count = 40;
-    }
+    let opt = {width: 16, height: 16, count: 40};
 
     const offsets = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
 
@@ -26,29 +11,17 @@
         for (let o of offsets) {
             const ox = x + o[0];
             const oy = y + o[1];
-            if (0 <= ox && ox < width && 0 <= oy && oy < height && data[oy][ox].value == -1) {
+            if (0 <= ox && ox < opt.width && 0 <= oy && oy < opt.height && data[oy][ox].value == -1) {
                 ++c;
             }
         }
         return c;
     }
 
-    let data = [];
-    for (let y = 0; y < height; ++y) {
-        data[y] = [];
-        for (let x = 0; x < width; ++x) {
-            data[y][x] = {
-                x: x,
-                y: y,
-                status: 'init',
-                value: null,
-                is_init: false,
-                freeze: false
-            };
-        }
-    }
-
-    let remain = count;
+    let data;
+    let status;
+    let remain;
+    restart();
 
     function flag(x, y) {
         --remain;
@@ -63,7 +36,7 @@
         for (let o of offsets) {
             const ox = x + o[0];
             const oy = y + o[1];
-            if (0 <= ox && ox < width && 0 <= oy && oy < height && data[oy][ox].status == 'mark') {
+            if (0 <= ox && ox < opt.width && 0 <= oy && oy < opt.height && data[oy][ox].status == 'mark') {
                 ++c;
             }
         }
@@ -82,7 +55,7 @@
             for (let o of offsets) {
                 const ox = x + o[0];
                 const oy = y + o[1];
-                if (0 <= ox && ox < width && 0 <= oy && oy < height && data[oy][ox].status == 'init') {
+                if (0 <= ox && ox < opt.width && 0 <= oy && oy < opt.height && data[oy][ox].status == 'init') {
                     if (data[oy][ox].value >= 0) {
                         data[oy][ox].status = 'clear';
                     } else {
@@ -98,17 +71,22 @@
     }
 
     export function restart() {
-        remain = count;
         status = 'working';
-        for (const row of data) {
-            for (const c of row) {
-                c.status = 'init';
-                c.value = null;
-                c.is_init = false;
-                c.freeze = false;
+        data = [];
+        for (let y = 0; y < opt.height; ++y) {
+            data[y] = [];
+            for (let x = 0; x < opt.width; ++x) {
+                data[y][x] = {
+                    x: x,
+                    y: y,
+                    status: 'init',
+                    value: null,
+                    is_init: false,
+                    freeze: false
+                };
             }
         }
-        data = data
+        remain = opt.count;
     }
 
     function init(e) {
@@ -116,9 +94,9 @@
         const cy = e.detail.y;
 
         let mines = 0;
-        while (mines < count) {
-            const x = Math.floor(Math.random() * width);
-            const y = Math.floor(Math.random() * height);
+        while (mines < opt.count) {
+            const x = Math.floor(Math.random() * opt.width);
+            const y = Math.floor(Math.random() * opt.height);
             if (cx - 1 <= x && x <= cx + 1 && cy - 1 <= y && y <= cy + 1) {
                 continue
             }
@@ -128,8 +106,8 @@
             }
         }
 
-        for (let y = 0; y < height; ++y) {
-            for (let x = 0; x < width; ++x) {
+        for (let y = 0; y < opt.height; ++y) {
+            for (let x = 0; x < opt.width; ++x) {
                 data[y][x].is_init = true;
                 if (data[y][x].value == null) {
                     data[y][x].value = count_mine(x, y);
@@ -146,8 +124,8 @@
 
     function fail() {
         status = 'failure';
-        for (let y = 0; y < height; ++y) {
-            for (let x = 0; x < width; ++x) {
+        for (let y = 0; y < opt.height; ++y) {
+            for (let x = 0; x < opt.width; ++x) {
                 data[y][x].freeze = true;
             }
         }
@@ -165,8 +143,6 @@
                 return 'X';
         }
     }
-
-    let status = 'working';
 
     function get_status() {
         if (status != 'working') {
@@ -193,10 +169,10 @@
     export function view() {
         return {
             status: get_status(), // working, success, failure
-            count: count,
+            count: opt.count,
             remain: remain,
-            width: width,
-            height: height,
+            width: opt.width,
+            height: opt.height,
             data: data.map(row => row.map(cell_view))
         }
     }
@@ -227,14 +203,14 @@
     async function do_load() {
         const t = await navigator.clipboard.readText();
         data = JSON.parse(t);
-        count = data.reduce((acc, cur) => acc + cur.filter(x => x.value == -1).length, 0);
+        opt.count = data.reduce((acc, cur) => acc + cur.filter(x => x.value == -1).length, 0);
         remain = count - data.reduce((acc, cur) => acc + cur.filter(x => x.status == 'mark').length, 0);
-        width = data[0].length;
-        height = data.length;
+        opt.width = data[0].length;
+        opt.height = data.length;
     }
-
-    let opts;
 </script>
+
+<FieldOpts bind:this={opt} on:change={restart} />
 <p><code>Remain: {remain}</code></p>
 <p><button on:click={restart}>restart</button></p>
 <!--debug<p><button on:click={do_load}>load</button></p>-->
