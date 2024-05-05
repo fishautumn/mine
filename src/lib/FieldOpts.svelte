@@ -73,10 +73,6 @@
 </div>
 
 <style>
-div#left {
-    float: left;
-    width: 120px;
-}
 input[type='number'] {
     width: 40px;
 }
