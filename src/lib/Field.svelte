@@ -221,7 +221,7 @@
 <FieldOpts bind:this={opt} on:change={restart} />
 <p><code>Remain: {remain}</code> <Clock bind:this={clock} /></p>
 <p><button on:click={restart}>restart</button></p>
-<p><button on:click={do_load}>load</button></p>
+<!--<p><button on:click={do_load}>load</button></p>-->
 <div>
     {#each data as row}
         <div class="row">
