@@ -43,4 +43,4 @@
 
 </script>
 
-<code>Elapsed: {elapse / 1000} seconds</code>
+<code>Elapsed: {(elapse / 1000).toFixed(3)} seconds</code>

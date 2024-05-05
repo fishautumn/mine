@@ -152,7 +152,7 @@
             for (const c of s1.cells) {
                 const k = `${c.x},${c.y}`;
                 for (const s2 of bs_map[k]) {
-                    if (s2 !== s1 && ss.every(x => x !== s2) && set_cmp(s1, s2) > 0) {
+                    if (s2 !== s1 && ss.every(x => x !== s2)) {
                         ss.push(s2);
                     }
                 }

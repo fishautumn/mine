@@ -19,10 +19,10 @@
         }
     };
 
-    let level = "medium";
-    export let width = 16;
+    let level = "expert";
+    export let width = 30;
     export let height = 16;
-    export let count = 40;
+    export let count = 99;
 
     function on_level_changed() {
         if (level in levels) {

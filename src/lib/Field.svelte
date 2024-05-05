@@ -3,7 +3,7 @@
     import FieldOpts from '$lib/FieldOpts.svelte';
     import Clock from '$lib/Clock.svelte';
 
-    let opt = {width: 16, height: 16, count: 40};
+    let opt = {width: 30, height: 16, count: 99};
     let clock = {};
 
     const offsets = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
@@ -222,7 +222,8 @@
 </script>
 
 <FieldOpts bind:this={opt} on:change={restart} />
-<p><code>Remain: {remain}</code> <Clock bind:this={clock} /></p>
+<p><code>Remain: {remain}</code></p>
+<p><Clock bind:this={clock} /></p>
 <p><button on:click={restart}>restart</button></p>
 <!--<p><button on:click={do_load}>load</button></p>-->
 <div>
