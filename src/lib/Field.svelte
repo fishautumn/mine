@@ -6,7 +6,7 @@
     let opt = {width: 16, height: 16, count: 40};
     let clock = {};
 
-    const offsets = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+    const offsets = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
 
     function count_mine(x, y) {
         let c = 0;
@@ -212,7 +212,7 @@
         const t = await navigator.clipboard.readText();
         data = JSON.parse(t);
         opt.count = data.reduce((acc, cur) => acc + cur.filter(x => x.value == -1).length, 0);
-        remain = count - data.reduce((acc, cur) => acc + cur.filter(x => x.status == 'mark').length, 0);
+        remain = opt.count - data.reduce((acc, cur) => acc + cur.filter(x => x.status == 'mark').length, 0);
         opt.width = data[0].length;
         opt.height = data.length;
     }
@@ -221,7 +221,7 @@
 <FieldOpts bind:this={opt} on:change={restart} />
 <p><code>Remain: {remain}</code> <Clock bind:this={clock} /></p>
 <p><button on:click={restart}>restart</button></p>
-<!--debug<p><button on:click={do_load}>load</button></p>-->
+<p><button on:click={do_load}>load</button></p>
 <div>
     {#each data as row}
         <div class="row">

@@ -12,7 +12,7 @@
             height: 16,
             count: 40
         },
-        export: {
+        expert: {
             width: 30,
             height: 16,
             count: 99

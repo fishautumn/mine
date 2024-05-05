@@ -3,7 +3,7 @@
 
     export let field;
 
-    const offsets = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+    const offsets = [[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]];
 
     function* adjacent(v, x, y) {
         for (let o of offsets) {
@@ -11,30 +11,6 @@
             const oy = y + o[1];
             if (0 <= ox && ox < v.width && 0 <= oy && oy < v.height) {
                 yield ({x:ox, y:oy});
-            }
-        }
-    }
-
-    function* adjacent2(v, x, y) {
-        for (const dy of [-2, -1]) {
-            const oy = y + dy;
-            if (oy < 0) {
-                continue;
-            }
-            for (const dx of [-2, -1, 0, 1, 2]) {
-                const ox = x + dx;
-                if (0 <= ox && ox < v.width) {
-                    yield ({x:ox, y:oy});
-                }
-            }
-        }
-        for (const dy of [0]) {
-            const oy = y + dy;
-            for (const dx of [-2, -1]) {
-                const ox = x + dx;
-                if (ox >= 0) {
-                    yield ({x:ox, y:oy});
-                }
             }
         }
     }
@@ -126,6 +102,27 @@
         }
     }
 
+    function set_cmp(s1, s2) {
+        const len = Math.min(s1.cells.length, s2.cells.length);
+        for (let i = 0; i < len; ++i) {
+            const c1 = s1.cells[i];
+            const c2 = s2.cells[i];
+            let d = c1.y - c2.y;
+            if (d != 0) {
+                return d;
+            }
+            d = c1.x - c2.x;
+            if (d != 0) {
+                return d;
+            }
+        }
+        return s1.cells.length - s2.cells.length;
+    }
+
+    function set_same(s1, s2) {
+        return s1.min == s2.min && s1.max == s2.max && s1.cells.length == s2.cells.length && set_cmp(s1, s2) == 0;
+    }
+
     function careful_solver(v, guess) {
         // mark definite mine, dig definite blanks
 
@@ -135,7 +132,6 @@
             return [{op:'dig', x: Math.floor(v.width/2), y: Math.floor(v.height/2)}];
         }
 
-        const bs_map = {};
         for (let y = 0; y < v.height; ++y) {
             for (let x = 0; x < v.width; ++x) {
                 if (typeof(v.data[y][x]) == 'number') {
@@ -148,92 +144,92 @@
                     const r = val - ms;
                     const s = {cells:bs, min: r, max: r};
                     sets.push(s);
-                    const k = `${x},${y}`;
-                    bs_map[`${x},${y}`] = [s];
                 }
             }
         }
 
-        for (let y = 0; y < v.height; ++y) {
-            for (let x = 0; x < v.width; ++x) {
-                const tcbs = bs_map[`${x},${y}`];
-                if (tcbs == null) {
+        const bs_map = {};
+        for (const s of sets) {
+            for (const c of s.cells) {
+                const k = `${c.x},${c.y}`;
+                if (k in bs_map) {
+                    bs_map[k].push(s);
+                } else {
+                    bs_map[k] = [s];
+                }
+            }
+        }
+
+        for (const s1 of [...sets]) {
+            const ss = [];
+            for (const c of s1.cells) {
+                const k = `${c.x},${c.y}`;
+                for (const s2 of bs_map[k]) {
+                    if (s2 !== s1 && (s1.cells.length <= 8 || s2.cells.length <= 8) && ss.filter(x => x === s2).length == 0 && set_cmp(s1, s2) > 0) {
+                        ss.push(s2);
+                    }
+                }
+            }
+            for (const s2 of ss) {
+                const s1_only = {cells:[]};
+                const overlap = {cells:[]};
+                for (const c of s1.cells) {
+                    if (exists(s2.cells, c)) {
+                        overlap.cells.push(c);
+                    } else {
+                        s1_only.cells.push(c);
+                    }
+                }
+                // overlap has at least one cell.
+                const s2_only = {cells:[]};
+                for (const c of s2.cells) {
+                    if (!exists(overlap.cells, c)) {
+                        s2_only.cells.push(c);
+                    }
+                }
+                if (s2_only.cells.length == 0 && s1_only.cells.length == 0) {
                     continue;
                 }
-                const cbs = tcbs[0];
-                for (const o of adjacent2(v, x, y)) {
-                    const tabs = bs_map[`${o.x},${o.y}`];
-                    if (tabs == null) {
+                for (const s of [s1_only, s2_only, overlap]) {
+                    s.min = 0;
+                    s.max = s.cells.length;
+                }
+
+                let changed = true;
+                while (changed) {
+                    changed = false;
+                    for (const [full, only] of [[s1, s1_only], [s2, s2_only]]) {
+                        if (full.max - only.min < overlap.max) {
+                            overlap.max = full.max - only.min;
+                            changed = true;
+                        }
+                        if (full.min - only.max > overlap.min) {
+                            overlap.min = full.min - only.max;
+                            changed = true;
+                        }
+                        if (full.max - overlap.min < only.max) {
+                            only.max = full.max - overlap.min;
+                            changed = true;
+                        }
+                        if (full.min - overlap.max > only.min) {
+                            only.min = full.min - overlap.max;
+                            changed = true;
+                        }
+                    }
+                }
+                for (const ns of [overlap, s1_only, s2_only].filter(s => s.cells.length > 0 && s.min == s.max)) {
+                    if (sets.filter(s => set_same(s, ns)).length > 0) {
                         continue;
                     }
-                    for (const abs of [...tabs, sets[0]]) {
-                        const c_only = {cells:[]};
-                        const a_only = {cells:[]};
-                        const overlap = {cells:[]};
-                        for (const cc of cbs.cells) {
-                            if (exists(abs.cells, cc)) {
-                                overlap.cells.push(cc);
+                    sets.push(ns);
+                    if (ns.cells.length <= 8) {
+                        for (const c of ns.cells) {
+                            const k = `${c.x},${c.y}`;
+                            if (k in bs_map) {
+                                bs_map[k].push(ns);
                             } else {
-                                c_only.cells.push(cc);
+                                bs_map[k] = [ns];
                             }
-                        }
-                        if (overlap.cells.length === 0) {
-                            continue;
-                        }
-                        for (const ac of abs.cells) {
-                            if (!exists(overlap.cells, ac)) {
-                                a_only.cells.push(ac);
-                            }
-                        }
-                        if (a_only.cells.length == 0 && c_only.cells.length == 0) {
-                            continue;
-                        }
-                        for (const s of [c_only, a_only, overlap]) {
-                            s.min = 0;
-                            s.max = s.cells.length;
-                        }
-
-                        let done = false;
-                        while (!done) {
-                            let changed = false;
-
-                            for (const m of [cbs.max - c_only.min, abs.max - a_only.min]) {
-                                if (m < overlap.max) {
-                                    overlap.max = m;
-                                    changed = true;
-                                }
-                            }
-                            for (const m of [cbs.min - c_only.max, abs.min - a_only.max]) {
-                                if (m > overlap.min) {
-                                    overlap.min = m;
-                                    changed = true;
-                                }
-                            }
-                            if (cbs.max - overlap.min < c_only.max) {
-                                c_only.max = cbs.max - overlap.min;
-                                changed = true;
-                            }
-                            if (cbs.min - overlap.max > c_only.min) {
-                                c_only.min = cbs.min - overlap.max;
-                                changed = true;
-                            }
-                            if (abs.max - overlap.min < a_only.max) {
-                                a_only.max = abs.max - overlap.min;
-                                changed = true;
-                            }
-                            if (abs.min - overlap.max > a_only.min) {
-                                a_only.min = abs.min - overlap.max;
-                                changed = true;
-                            }
-
-                            done = !changed;
-                        }
-                        [overlap, c_only, a_only].filter(s => s.cells.length > 0).forEach(s => sets.push(s));
-                        [overlap, c_only].filter(s => s.cells.length > 0).forEach(s => tcbs.push(s));
-                        remove_dup(tcbs);
-                        if (abs !== sets[0]) {
-                            [overlap, a_only].filter(s => s.cells.length > 0).forEach(s => tabs.push(s));
-                            remove_dup(tabs);
                         }
                     }
                 }
@@ -314,9 +310,9 @@
 
 <div>
     <p/>
-    <button on:click={go}>Go</button>
+    <button on:click={go}><code>Go</code></button>
 
-    <button on:click={step}>Step</button>
+    <button on:click={() => step()}><code>Step</code></button>
 
-    <button on:click={() => step(true)}>Guess</button>
+    <button on:click={() => step(true)}><code>Guess</code></button>
 </div>
