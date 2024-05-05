@@ -54,7 +54,7 @@
             {#each Object.keys(levels) as opt}
                 <label><input type="radio" name="level" value={opt} bind:group={level} on:change={on_level_changed} />{opt}</label><br/>
             {/each}
-            <label><input type="radio" name="level" value="customize" bind:group={level} on:change={on_level_changed}/>customize</label><br>&nbsp;
+            <label><input type="radio" name="level" value="custom" bind:group={level} on:change={on_level_changed}/>custom</label><br>&nbsp;
         </div>
         <div>
             {#if level in levels}

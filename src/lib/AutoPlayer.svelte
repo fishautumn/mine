@@ -89,19 +89,6 @@
         return s1.length == s2.length && s1.every(a => exists(s2, a)) && s2.every(a => exists(s1, a));
     }
 
-    function remove_dup(set) {
-        for (let i = set.length - 2; i >= 0; --i) {
-            for (let j = set.length - 1; j > i; --j) {
-                if (set_eq(set[i].cells, set[j].cells)) {
-                    set[i].min = Math.max(set[i].min, set[j].min);
-                    set[i].max = Math.min(set[i].max, set[j].max);
-                    set[j] = set[set.length - 1];
-                    set.length--;
-                }
-            }
-        }
-    }
-
     function set_cmp(s1, s2) {
         const len = Math.min(s1.cells.length, s2.cells.length);
         for (let i = 0; i < len; ++i) {
@@ -302,17 +289,18 @@
         return pt;
     }
 
-    async function go() {
-        setTimeout(() => { if (step()) { go() } }, 20);
+    async function go(guess) {
+        setTimeout(() => { if (step(guess)) { go(guess) } }, 20);
     }
 
 </script>
 
 <div>
     <p/>
-    <button on:click={go}><code>Go</code></button>
+    <button on:click={() => go(false)}><code>Go</code></button>
+    <button on:click={() => step(false)}><code>Step</code></button>
+    <br/><br/>
+    <button on:click={() => go(true)}><code>Go Guess</code></button>
+    <button on:click={() => step(true)}><code>Step Guess</code></button>
 
-    <button on:click={() => step()}><code>Step</code></button>
-
-    <button on:click={() => step(true)}><code>Guess</code></button>
 </div>
