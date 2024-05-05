@@ -1,8 +1,10 @@
 <script>
     import Cell from '$lib/Cell.svelte';
     import FieldOpts from '$lib/FieldOpts.svelte';
+    import Clock from '$lib/Clock.svelte';
 
     let opt = {width: 16, height: 16, count: 40};
+    let clock = {};
 
     const offsets = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
 
@@ -87,6 +89,9 @@
             }
         }
         remain = opt.count;
+        if (clock.reset) {
+            clock.reset();
+        }
     }
 
     function init(e) {
@@ -118,11 +123,13 @@
         data[cy][cx].status = 'clear';
         confirm({detail:{x:cx, y:cy}});
         init_snapshot = data;
+        clock.start();
     }
 
     let init_snapshot;
 
     function fail() {
+        clock.stop();
         status = 'failure';
         for (let y = 0; y < opt.height; ++y) {
             for (let x = 0; x < opt.width; ++x) {
@@ -151,6 +158,7 @@
         if (remain > 0 || has_init()) {
             return status;
         }
+        clock.stop();
         status = 'success';
         return status;
     }
@@ -211,7 +219,7 @@
 </script>
 
 <FieldOpts bind:this={opt} on:change={restart} />
-<p><code>Remain: {remain}</code></p>
+<p><code>Remain: {remain}</code> <Clock bind:this={clock} /></p>
 <p><button on:click={restart}>restart</button></p>
 <!--debug<p><button on:click={do_load}>load</button></p>-->
 <div>
