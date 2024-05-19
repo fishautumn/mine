@@ -11,42 +11,48 @@ interface Action {
 
 enum GameStatus {
     Working = 'working',
-    Sucess = 'success',
+    Success = 'success',
     Failure = 'failure',
-}
+};
 
 enum CellStatus {
     Init = ' ',
     Mark = 'F',
-}
+};
 
 type CellView = CellStatus | number;
 
-interface GameView {
+type CellFunc = (Coord, CellStatus) => void;
+
+class GameView {
     status: GameStatus;
     count: number;
     remain: number;
     width: number;
     height: number;
     data: CellView[][];
+}
 
-    for_each_cell(func: (Coord, CellStatus)=>void):void {
-        for (let y = 0; y < view.height; ++y) {
-            const row = view.data[y]
-            for (let x = 0; x < view.width; ++x) {
-                func({x: x, y: y}, row[x])
-            }
+function for_each_cell(view: GameView, func: CellFunc): void {
+    for (let y = 0; y < view.height; ++y) {
+        const row = view.data[y];
+        for (let x = 0; x < view.width; ++x) {
+            func({x: x, y: y}, row[x]);
         }
     }
+}
 
-    for_each_adjacent(p: Coord, func： (Coord, CellStatus)=>void):void {
-        const off = [{x:-1,y:-1},{x:0,y:-1},{x:1,y:-1},{x:-1,y:0},{x:1,y:0},{x:-1,y:1},{x:0,y:1},{x:1,y:1}];
-        for (const o of off) {
-            const x = p.x + o.x
-            const y = p.y + o.y
-            if (0 <= x && x < this.width && 0 <= y && y <= this.height) {
-                func({x:x, y:y}, this.data[y][x])
-            }
+function for_each_adjacent(view: GameView, p: Coord, func: CellFunc): void {
+    const off = [
+        {x:-1, y:-1}, {x:0, y:-1}, {x:1, y:-1},
+        {x:-1, y:0}, {x:1, y:0},
+        {x:-1, y:+1}, {x:0, y:+1}, {x:1, y:+1}
+    ];
+    for (const o of off) {
+        const x = p.x + o.x;
+        const y = p.y + o.y;
+        if (0 <= x && x < view.width && 0 <= y && y < view.height) {
+            func({x:x, y:y}, view.data[y][x]);
         }
     }
 }
@@ -75,37 +81,34 @@ min(A - B) = -size(B) => \all A 0, \all B 1
 interface Coord {
     x: number;
     y: number;
-
-    cmp(that: Coord): number => {
-        let d = this.y - that.y;
-        return d != 0 ? d : this.x - that.y;
-    }
-
-    str(): string => {
-        return `${this.x},${this.y}`
-    }
 }
 
 function coord_cmp(p1: Coord, p2: Coord): number {
-    return p1.cmp(p2);
+    let d = p1.y - p2.y;
+    return d != 0 ? d : p1.x - p2.x;
+}
+
+function str(c: Coord) {
+    return `${c.x},${c.y}`
 }
 
 class CellSet {
-    cells: Set<Coord>;
+    cells: Coord[];
     sum: number;
 
     constructor(cells: Coord[], sum: number) {
-        this.cells = new Set<Coord>(coord_cmp);
+        this.cells = cells.sort(coord_cmp);
         this.sum = sum;
     }
 
-    is_definitive(): boolean => {
+    is_definitive(): boolean {
         return this.sum == 0 || this.sum == this.cells.length;
     }
 }
 
 class DiffResult {
     positive: Coord[];
+    negative: Coord[];
     sum: number;
 
     constructor(s1: CellSet, s2: CellSet) {
@@ -115,6 +118,7 @@ class DiffResult {
             s2 = s3;
         }
         this.positive = [];
+        this.negative = [];
         this.sum = s1.sum - s2.sum;
 
         const l1 = s1.cells.length;
@@ -122,11 +126,12 @@ class DiffResult {
         let i1 = 0;
         let i2 = 0;
         while (i1 < l1 && i2 < l2) {
-            const d = s1.cells[i1].cmp(s2.cells[i2])
+            const d = coord_cmp(s1.cells[i1], s2.cells[i2])
             if (d < 0) {
-                positive.push(s1.cells[i1])
+                this.positive.push(s1.cells[i1])
                 ++i1
             } else if (d > 0) {
+                this.negative.push(s2.cells[i2])
                 ++i2
             } else {
                 ++i1;
@@ -134,12 +139,35 @@ class DiffResult {
             }
         }
         for (; i1 < l1; ++i1) {
-            positive.push(s1.cells[i1])
+            this.positive.push(s1.cells[i1])
+        }
+        for (; i2 < l2; ++i2) {
+            this.negative.push(s2.cells[i2])
         }
     }
 
     is_definitive(): boolean {
-        return this.sum == this.positive.length;
+        return this.sum == this.positive.length || this.sum + this.negative.length == 0;
+    }
+
+    make_set(): CellSet {
+        const ret = []
+        if (this.sum == this.positive.length) {
+            if (this.positive.length > 0) {
+                ret.push(new CellSet(this.positive, this.sum))
+            }
+            if (this.negative.length > 0) {
+                ret.push(new CellSet(this.negative, 0))
+            }
+        } else if (this.sum + this.negative.length == 0) {
+            if (this.positive.length > 0) {
+                ret.push(new CellSet(this.positive, 0))
+            }
+            if (this.negative.length > 0) {
+                ret.push(new CellSet(this.negative, -this.sum))
+            }
+        }
+        return ret
     }
 }
 
@@ -177,16 +205,16 @@ export default function matrix_solve(view: GameView, guess: boolean): Action[] {
     }
 
     if (is_init(view)) {
-        return {x: Math.floor(view.width / 2), y: Math.floor(view.height / 2), op: Op.Dig }
+        return [{x: Math.floor(view.width / 2), y: Math.floor(view.height / 2), op: Op.Dig }]
     }
 
     const sets = []
     sets.push(init_set(view))
-    view.for_each_cell((p: Coord, c: cellStatus) => {
+    for_each_cell(view, (p: Coord, c: cellStatus) => {
         if (typeof c === "number") {
             const cells = []
             let sum = c
-            view.for_each_adjacent(p, (pa, ca) => {
+            for_each_adjacent(view, p, (pa, ca) => {
                 if (ca === CellStatus.Init) {
                     cells.push(pa)
                 } else if (ca == CellStatus.Mark) {
@@ -213,10 +241,10 @@ class MatrixAnalyzer {
         this.map = {}
         for (const s of sets) {
             for (const p of s.cells) {
-                let a = this.map[p.str()]
+                let a = this.map[str(p)]
                 if (a == null) {
                     a = []
-                    this.map[p.str()] = a
+                    this.map[str(p)] = a
                 }
                 a.push(s)
             }
@@ -224,35 +252,57 @@ class MatrixAnalyzer {
     }
 
     analyze(): Action[] {
-        let updated = true;
+        let updated = true
         while (updated) {
-            for (const s of sets) {
+            updated = false
+            for (const s of this.sets) {
                 if (s.sum > 8) {
                     continue
                 }
                 const pss = []
                 for (const p of s.cells) {
-                    for (const ps of this.map[p.str()]) {
-                        if (ps !== s && ps.sum >= s.sum) {
-                            const diff = new DiffResult(ps, s)
-                            if (diff.is_definitive()) {
-                                ps.sum = diff.sum
-                                ps.cells = diff.positive
+                    for (const ps of this.map[str(p)]) {
+                        if (ps === s || ps.sum < s.sum) {
+                            continue;
+                        }
+                        const diff = new DiffResult(ps, s)
+                        const ds = diff.make_set();
+                        if (ds.length == 0) {
+                            continue
+                        }
+                        for (const c of ps.cells) {
+                            if (!ds[0].cells.some(x => x == c)) {
+                                const t = this.map[str(c)]
+                                this.map[str(c)] = t.filter(x => x !== ps)
                             }
                         }
+                        ps.sum = ds[0].sum
+                        ps.cells = ds[0].cells
+                        if (ds.length == 2) {
+                            this.sets.push(ds[1]);
+                            for (const c of ds[1].cells) {
+                                let a = this.map[str(c)]
+                                if (a == null) {
+                                    a = []
+                                    this.map[str(c)] = a
+                                }
+                                a.push(s)
+                            }
+                        }
+                        updated = true;
                     }
                 }
             }
         }
         const actions = []
-        for (const s of sets) {
+        for (const s of this.sets) {
             if (s.sum == 0) {
                 for (const p of s.cells) {
-                    actions.push(new Action{x:p.x, y:p.y, op: Op.Dig})
+                    actions.push({x:p.x, y:p.y, op: Op.Dig})
                 }
             } else if (s.sum == s.cells.length) {
                 for (const p of s.cells) {
-                    actions.push(new Action{x:p.x, y:p.y, op: Op.Mark})
+                    actions.push({x:p.x, y:p.y, op: Op.Mark})
                 }
             }
         }

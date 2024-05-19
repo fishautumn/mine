@@ -61,7 +61,8 @@
 
     function solve(v, guess) {
         // return random_monkey(v);
-        return careful_solver(v, guess);
+        // return careful_solver(v, guess);
+        return matrix_solve(v, guess);
     }
 
     function random_monkey(v) {
