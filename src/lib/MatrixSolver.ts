@@ -191,7 +191,7 @@ function init_set(view: GameView) {
         const row = view.data[y]
         for (let x = 0; x < view.width; ++x) {
             const c = row[x]
-            if (c == CellStatus.Init) {
+            if (c === CellStatus.Init) {
                 cells.push({x: x, y: y})
             }
         }
@@ -227,7 +227,11 @@ export default function matrix_solve(view: GameView, guess: boolean): Action[] {
         }
     })
     const analyzer = new MatrixAnalyzer(sets)
-    return analyzer.analyze();
+    let ret = analyzer.analyze();
+    if (ret.length == 0 && guess) {
+        ret = [find_min_probability(sets)]
+    }
+    return ret
 }
 
 class MatrixAnalyzer {
@@ -323,4 +327,41 @@ function remove_from<T>(t: T, a: T[]): boolean {
         a[i - 1] = a[i];
     }
     return removed
+}
+
+function find_min_probability(sets: CellSet[]) {
+    const m = [];
+    for (const s of sets) {
+        const tp = s.sum / s.cells.length;
+        for (const c of s.cells) {
+            let row;
+            if (c.y in m) {
+                row = m[c.y];
+            } else {
+                row = [];
+                m[c.y] = row;
+            }
+            if (c.x in row) {
+                if (tp > row[c.x]) {
+                    row[c.x] = tp;
+                }
+            } else {
+                row[c.x] = tp;
+            }
+        }
+    }
+    let min_p = 2;
+    let pt;
+    for (const [y, row] of m.entries()) {
+        if (row == null) {
+            continue;
+        }
+        for (const [x, p] of row.entries()) {
+            if (p != null && p > 0 && p < min_p) {
+                min_p = p;
+                pt = {x:x, y:y};
+            }
+        }
+    }
+    return {x: pt.x, y: pt.y, op: Op.Dig}
 }
