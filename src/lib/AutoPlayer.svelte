@@ -1,5 +1,6 @@
 <script>
     import Field from '$lib/Field.svelte';
+    import matrix_solve from '$lib/MatrixSolver.ts';
 
     export let field;
 
