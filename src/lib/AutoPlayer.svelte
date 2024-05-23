@@ -1,6 +1,7 @@
 <script>
     import Field from '$lib/Field.svelte';
     import matrix_solve from '$lib/MatrixSolver.ts';
+    import matrix_solve2 from '$lib/MatrixSolver.ts';
 
     export let field;
 
@@ -62,7 +63,7 @@
     function solve(v, guess) {
         // return random_monkey(v);
         // return careful_solver(v, guess);
-        return matrix_solve(v, guess);
+        return matrix_solve2(v, guess);
     }
 
     function random_monkey(v) {

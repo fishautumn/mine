@@ -234,6 +234,183 @@ export default function matrix_solve(view: GameView, guess: boolean): Action[] {
     return ret
 }
 
+function init_set2(view: GameView) {
+    const row = [];
+    for (let y = 0; y < view.height; ++y) {
+        const row = view.data[y]
+        for (let x = 0; x < view.width; ++x) {
+            const c = row[x]
+            if (c === CellStatus.Init) {
+                row[y * view.width + x] = 1;
+            }
+        }
+    }
+    row[view.width * view.height] = view.remain;
+    return row;
+}
+
+export function matrix_solve2(view: GameView, guess: boolean): Action[] {
+    if (view.status != GameStatus.Working) {
+        return []
+    }
+
+    if (is_init(view)) {
+        return [{x: Math.floor(view.width / 2), y: Math.floor(view.height / 2), op: Op.Dig }]
+    }
+
+    const m = [];
+    m.push(init_set2(view));
+    for_each_cell(view, (p: Coord, c: cellStatus) => {
+        if (typeof c === "number") {
+            const row = [];
+            let sum = c;
+            let cells = 0;
+            for_each_adjacent(view, p, (pa, ca) => {
+                if (ca === CellStatus.Init) {
+                    row[p.y * view.width + p.x] = 1;
+                    ++cells;
+                } else if (ca == CellStatus.Mark) {
+                    --sum
+                }
+            })
+            if (cells > 0) {
+                row[view.width * view.height] = sum;
+            }
+        }
+    })
+    simplify_matrix(m);
+    let ret = analyze_matrix2(m);
+    return ret
+}
+
+function analyze_matrix2(m: number[][], width: number): Action[] {
+    const actions = [];
+    for (const row of m) {
+        let max = 0;
+        let min = 0;
+        let pos = [];
+        let neg = [];
+        for (let x = 0; x + 1 < row.length; ++x) {
+            if (x in row) {
+                if (row[x] > 0) {
+                    max += row[x];
+                    pos.push(x);
+                } else if (row[x] < 0) {
+                    min += row[x];
+                    neg.push(x);
+                }
+            }
+        }
+        if (Math.abs(row[row.length - 1] - max) < Number.EPSILON) {
+        } else if (Math.abs(row[row.length - 1] - min) < Number.EPSILON) {
+            const t = pos;
+            pos = neg;
+            neg = t;
+        } else {
+            continue;
+        }
+        for (const p of pos) {
+            actions.push({op:Op.Mark, y:Math.floor(p / width), x: p % width})
+        }
+        for (const p of neg) {
+            actions.push({op:Op.Dig, y:Math.floor(p / width), x: p % width})
+        }
+    }
+    return actions;
+}
+
+function simplify_matrix(m: number[][]): void {
+    const h = m.length;
+    const w = m[0].length;
+    const count = [];
+    for (let y = 0; y < h; ++y) {
+        let row = m[y];
+        let c = 0;
+        for (let x = 0; x < w; ++x) {
+            if (x in row && row[x] != 0) {
+                ++c;
+            }
+        }
+        count.push(c);
+    }
+    let next_y = 0;
+    for (let x = 0; x < w; ++x) {
+        let min = w;
+        let sel_y = -1;
+        const rs = [];
+        for (let y = next_y; y < h; ++y) {
+            if (m[y][x] != 0) {
+                rs.push(y);
+                if (count[y] < min) {
+                    min = count[y];
+                    sel_y = y;
+                }
+            }
+        }
+        if (sel_y == -1) {
+            continue;
+        }
+        if (next_y != sel_y) {
+            const t = m[next_y];
+            m[next_y] = m[sel_y];
+            m[sel_y] = t;
+            for (let i = 0; i < rs.length; ++i) {
+                if (rs[i] == sel_y) {
+                    rs[i] = rs[rs.length - 1];
+                    rs.length = rs.length - 1;
+                    break;
+                }
+            }
+        }
+        handle_column(m, x, next_y, rs);
+        count[next_y] = x;
+        ++next_y;
+    }
+    for (let y = next_y - 1; y >= 0; --y) {
+        handle_column_rev(m, count[y], y);
+    }
+}
+
+function handle_column_rev(m: number[][], x: number, y: number) {
+    const base_row = m[y];
+    for (let y1 = 0; y1 < y; ++y1) {
+        const row = m[y1];
+        row[x] = x in row ? row[x] : 0;
+        const factor = base_row[x] == 1 ? row[x] : row[x] / base_row[x];
+        row[x] = 0;
+        for (let nx = x1; nx < m[x].length; ++nx) {
+            if (nx in base_row && base_row[nx] != 0) {
+                row[nx] -= base_row[nx] * factor;
+            }
+        }
+    }
+}
+
+function handle_column(m: number[][], x: number, y: number, rs: number[]) {
+    const w = m[0].length;
+    const base_row = m[y];
+    for (const ny of rs) {
+        const row = m[ny];
+        row[x] = x in row ? row[x] : 0;
+        const factor = base_row[x] == 1 ? row[x] : row[x] / base_row[x];
+        row[x] = 0;
+        for (let nx = x + 1; nx < w; ++nx) {
+            if (nx in base_row && base_row[nx] != 0) {
+                row[nx] -= base_row[nx] * factor;
+            }
+        }
+    }
+}
+
+function first_non_zero_index(row: number[]) {
+    for (let i = 0; i < row.length; ++i) {
+        if (row[i] != 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 class MatrixAnalyzer {
     sets: CellSet[];
     map: Map;
