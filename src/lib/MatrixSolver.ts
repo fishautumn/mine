@@ -280,7 +280,49 @@ export function matrix_solve2(view: GameView, guess: boolean): Action[] {
     })
     simplify_matrix(m);
     let ret = analyze_matrix2(m);
+    if (ret.length == 0 && guess) {
+        ret = matrix_guess2();
+    }
     return ret
+}
+
+function matrix_guess2(m: number[][], width: number) : Action[] {
+    let sel = -1;
+    let prob = 100;
+    for (const row of m) {
+        let max = 0;
+        let min = 0;
+        let pos = [];
+        let neg = [];
+        for (let x = 0; x + 1 < row.length; ++x) {
+            if (x in row) {
+                if (row[x] > 0) {
+                    max += row[x];
+                    pos.push(x);
+                } else if (row[x] < 0) {
+                    min += row[x];
+                    neg.push(x);
+                }
+            }
+        }
+        if (pos.length > 0) {
+            // assume all neg are 1's
+            let p = (row[row.length - 1] - min) / max;
+            if (p < prob) {
+                prob = p;
+                sel = pos[0];
+            }
+        }
+        if (neg.length > 0) {
+            // assume all pos are 1's
+            let p = (row[row.length - 1] - max) / min;
+            if (p < prob) {
+                prob = p;
+                sel = neg[0];
+            }
+        }
+    }
+    return [{op:Op.Dig, y:Math.round(sel / width), x: sel % width}];
 }
 
 function analyze_matrix2(m: number[][], width: number): Action[] {
